@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mapa Polski — quiz geograficzny</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#68738a;--accent:#2563eb;--good:#16803c;--bad:#c62828}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{padding:18px 22px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+h1{font-size:21px;margin:0}.sub{color:#cbd5e1;font-size:13px;margin-top:3px}
+.controls{padding:14px 18px;background:var(--card);display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 1px 5px #0001}
+select,button{font:inherit;border:1px solid #d5dbe6;border-radius:9px;padding:9px 12px;background:#fff;color:var(--text)}
+button{cursor:pointer}button.primary{background:var(--accent);color:white;border-color:var(--accent);font-weight:650}
+button:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1250px;margin:auto;padding:16px}.layout{display:grid;grid-template-columns:1fr 300px;gap:16px}
+#map{height:650px;border-radius:14px;overflow:hidden;border:1px solid #d8dee9;background:#dbeafe}
+.panel{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 12px #0000000d;height:max-content}
+.target{font-size:25px;font-weight:750;margin:6px 0 16px}.hint{font-size:13px;color:var(--muted);line-height:1.45}
+.stat{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #edf0f5}.stat:last-child{border:0}
+#feedback{min-height:50px;margin-top:14px;padding:11px;border-radius:10px;background:#f3f4f6;line-height:1.4}
+.good{background:#e9f8ef!important;color:var(--good)}.bad{background:#fff0f0!important;color:var(--bad)}
+.legend{font-size:12px;color:var(--muted);margin-top:10px}
+.leaflet-control-attribution{font-size:9px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}#map{height:60vh;min-height:430px}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🗺️ Mapa Polski — quiz lokalizacyjny</h1><div class="sub">Zakres z Twojej kartki • 138 obiektów</div></div>
+  <button id="restart">Nowa seria</button>
+</header>
+<div class="controls">
+  <label>Zakres:
+    <select id="category">
+      <option value="all">Wszystko</option>
+      <option value="sem1">I semestr — Pobrzeża → Góry</option>
+      <option value="sem2">II semestr — Kanały, rzeki, jeziora</option>
+      <option value="kanały">Kanały</option>
+      <option value="rzeki">Rzeki</option>
+      <option value="jeziora">Jeziora</option>
+      <option value="pobrzeża">Pobrzeża</option>
+      <option value="pojezierza">Pojezierza</option>
+      <option value="niziny">Niziny</option>
+      <option value="wyżyny">Wyżyny i kotliny</option>
+      <option value="góry">Góry</option>
+    </select>
+  </label>
+  <button id="show">Pokaż odpowiedź</button>
+  <button id="next" class="primary">Następne</button>
+</div>
+
+<main><div class="layout">
+  <div>
+    <div id="map"></div>
+    <div class="legend">Kliknij na mapie miejsce, w którym znajduje się wskazany obiekt. Przybliżenie mapy pomaga przy rzekach i górach.</div>
+  </div>
+  <aside class="panel">
+    <div class="hint">Zaznacz na mapie:</div>
+    <div class="target" id="target">—</div>
+    <div class="stat"><span>Pytanie</span><b id="q">1 / 20</b></div>
+    <div class="stat"><span>Punkty</span><b id="score">0</b></div>
+    <div class="stat"><span>Skuteczność</span><b id="acc">0%</b></div>
+    <div id="feedback">Kliknij mapę, żeby odpowiedzieć.</div>
+  </aside>
+</div></main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DATA = [{"category": "kanały", "name": "Augustowski", "lat": 53.85, "lon": 23.0}, {"category": "kanały", "name": "Bydgoski", "lat": 53.15, "lon": 18.0}, {"category": "kanały", "name": "Gliwicki", "lat": 50.3, "lon": 18.6}, {"category": "kanały", "name": "Wieprz–Krzna", "lat": 51.6, "lon": 22.9}, {"category": "kanały", "name": "Żerański", "lat": 52.34, "lon": 21.0}, {"category": "kanały", "name": "Elbląski", "lat": 54.12, "lon": 19.55}, {"category": "rzeki", "name": "Łeba", "lat": 54.65, "lon": 17.55}, {"category": "rzeki", "name": "Łupawa", "lat": 54.45, "lon": 17.25}, {"category": "rzeki", "name": "Rega", "lat": 53.9, "lon": 15.35}, {"category": "rzeki", "name": "Parsęta", "lat": 54.0, "lon": 15.95}, {"category": "rzeki", "name": "Wieprza", "lat": 54.45, "lon": 16.45}, {"category": "rzeki", "name": "Słupia", "lat": 54.45, "lon": 17.05}, {"category": "rzeki", "name": "Wisła", "lat": 52.3, "lon": 19.1}, {"category": "rzeki", "name": "Soła", "lat": 49.9, "lon": 19.05}, {"category": "rzeki", "name": "Skawa", "lat": 49.85, "lon": 19.7}, {"category": "rzeki", "name": "Raba", "lat": 49.85, "lon": 20.05}, {"category": "rzeki", "name": "Wisłoka", "lat": 50.05, "lon": 21.45}, {"category": "rzeki", "name": "Dunajec", "lat": 49.75, "lon": 20.55}, {"category": "rzeki", "name": "San", "lat": 50.6, "lon": 22.0}, {"category": "rzeki", "name": "Wieprz", "lat": 51.1, "lon": 22.2}, {"category": "rzeki", "name": "Świder", "lat": 52.2, "lon": 21.45}, {"category": "rzeki", "name": "Bug", "lat": 52.5, "lon": 23.5}, {"category": "rzeki", "name": "Narew", "lat": 52.65, "lon": 21.2}, {"category": "rzeki", "name": "Wkra", "lat": 52.55, "lon": 20.2}, {"category": "rzeki", "name": "Skrwa", "lat": 52.65, "lon": 19.55}, {"category": "rzeki", "name": "Drwęca", "lat": 53.0, "lon": 19.35}, {"category": "rzeki", "name": "Osa", "lat": 53.6, "lon": 19.1}, {"category": "rzeki", "name": "Szreniawa", "lat": 50.3, "lon": 20.35}, {"category": "rzeki", "name": "Nida", "lat": 50.55, "lon": 20.55}, {"category": "rzeki", "name": "Czarna", "lat": 50.6, "lon": 21.2}, {"category": "rzeki", "name": "Kamienna", "lat": 51.0, "lon": 21.25}, {"category": "rzeki", "name": "Iłżanka", "lat": 51.15, "lon": 21.25}, {"category": "rzeki", "name": "Radomka", "lat": 51.45, "lon": 21.15}, {"category": "rzeki", "name": "Pilica", "lat": 51.7, "lon": 20.3}, {"category": "rzeki", "name": "Bzura", "lat": 52.15, "lon": 19.7}, {"category": "rzeki", "name": "Brda", "lat": 53.45, "lon": 18.0}, {"category": "rzeki", "name": "Wda", "lat": 53.55, "lon": 18.45}, {"category": "rzeki", "name": "Wężyca", "lat": 53.9, "lon": 18.2}, {"category": "rzeki", "name": "Radunia", "lat": 54.25, "lon": 18.3}, {"category": "rzeki", "name": "Odra", "lat": 51.9, "lon": 15.5}, {"category": "rzeki", "name": "Mała Panew", "lat": 50.6, "lon": 18.6}, {"category": "rzeki", "name": "Stobrawa", "lat": 50.85, "lon": 17.8}, {"category": "rzeki", "name": "Widawa", "lat": 51.25, "lon": 17.3}, {"category": "rzeki", "name": "Barycz", "lat": 51.45, "lon": 17.6}, {"category": "rzeki", "name": "Prosna", "lat": 51.35, "lon": 18.1}, {"category": "rzeki", "name": "Ina", "lat": 53.45, "lon": 15.1}, {"category": "rzeki", "name": "Nysa Kłodzka", "lat": 50.35, "lon": 16.65}, {"category": "rzeki", "name": "Oława", "lat": 50.95, "lon": 17.3}, {"category": "rzeki", "name": "Ślęża", "lat": 50.85, "lon": 16.75}, {"category": "rzeki", "name": "Bystrzyca", "lat": 50.95, "lon": 16.4}, {"category": "rzeki", "name": "Kaczawa", "lat": 51.15, "lon": 15.95}, {"category": "rzeki", "name": "Bóbr", "lat": 51.4, "lon": 15.65}, {"category": "rzeki", "name": "Nysa Łużycka", "lat": 51.25, "lon": 14.75}, {"category": "rzeki", "name": "Warta", "lat": 52.1, "lon": 18.6}, {"category": "rzeki", "name": "Widawka", "lat": 51.35, "lon": 19.0}, {"category": "rzeki", "name": "Ner", "lat": 51.8, "lon": 19.45}, {"category": "rzeki", "name": "Wełna", "lat": 52.75, "lon": 17.2}, {"category": "rzeki", "name": "Liswarta", "lat": 51.05, "lon": 18.7}, {"category": "rzeki", "name": "Obra", "lat": 52.2, "lon": 15.75}, {"category": "jeziora", "name": "Jamno", "lat": 54.25, "lon": 16.15}, {"category": "jeziora", "name": "Wicko", "lat": 54.75, "lon": 17.45}, {"category": "jeziora", "name": "Łebsko", "lat": 54.75, "lon": 17.45}, {"category": "jeziora", "name": "Gardno", "lat": 54.7, "lon": 17.1}, {"category": "jeziora", "name": "Mamry", "lat": 54.05, "lon": 21.65}, {"category": "jeziora", "name": "Dąbie", "lat": 53.5, "lon": 14.65}, {"category": "jeziora", "name": "Miedwie", "lat": 53.2, "lon": 14.9}, {"category": "jeziora", "name": "Drawsko", "lat": 53.55, "lon": 16.0}, {"category": "jeziora", "name": "Wdzydze", "lat": 54.0, "lon": 17.95}, {"category": "jeziora", "name": "Raduńskie", "lat": 54.3, "lon": 18.1}, {"category": "jeziora", "name": "Koronowskie", "lat": 53.35, "lon": 17.95}, {"category": "jeziora", "name": "Drużno", "lat": 54.1, "lon": 19.45}, {"category": "jeziora", "name": "Jeziorak", "lat": 53.65, "lon": 19.6}, {"category": "jeziora", "name": "Śniardwy", "lat": 53.75, "lon": 21.75}, {"category": "jeziora", "name": "Niegocin", "lat": 54.0, "lon": 21.75}, {"category": "jeziora", "name": "Wigry", "lat": 54.0, "lon": 23.05}, {"category": "jeziora", "name": "Zegrzyńskie", "lat": 52.5, "lon": 21.05}, {"category": "jeziora", "name": "Gopło", "lat": 52.5, "lon": 18.15}, {"category": "jeziora", "name": "Otmuchowskie", "lat": 50.45, "lon": 17.2}, {"category": "jeziora", "name": "Goczałkowickie", "lat": 49.9, "lon": 18.85}, {"category": "jeziora", "name": "Rożnowskie", "lat": 49.78, "lon": 20.7}, {"category": "jeziora", "name": "Czorsztyńskie", "lat": 49.45, "lon": 20.25}, {"category": "jeziora", "name": "Solińskie", "lat": 49.25, "lon": 22.45}, {"category": "pobrzeża", "name": "Szczecińskie", "lat": 53.7, "lon": 14.5}, {"category": "pobrzeża", "name": "Koszalin", "lat": 54.1, "lon": 16.3}, {"category": "pobrzeża", "name": "Gdańskie", "lat": 54.3, "lon": 18.8}, {"category": "pobrzeża", "name": "Żuławy Wiślane", "lat": 54.15, "lon": 19.0}, {"category": "pojezierza", "name": "Myśliborskie", "lat": 52.9, "lon": 14.9}, {"category": "pojezierza", "name": "Wałeckie", "lat": 53.2, "lon": 16.0}, {"category": "pojezierza", "name": "Drawskie", "lat": 53.55, "lon": 16.1}, {"category": "pojezierza", "name": "Krajeńskie", "lat": 53.3, "lon": 17.4}, {"category": "pojezierza", "name": "Bytowskie", "lat": 54.15, "lon": 17.55}, {"category": "pojezierza", "name": "Kaszubskie", "lat": 54.35, "lon": 18.0}, {"category": "pojezierza", "name": "Iławskie", "lat": 53.65, "lon": 19.5}, {"category": "pojezierza", "name": "Olsztyńskie", "lat": 53.75, "lon": 20.45}, {"category": "pojezierza", "name": "Kraina Wielkich Jezior Mazurskich", "lat": 53.9, "lon": 21.7}, {"category": "pojezierza", "name": "Ełckie", "lat": 53.85, "lon": 22.55}, {"category": "pojezierza", "name": "Suwalskie", "lat": 54.2, "lon": 22.95}, {"category": "pojezierza", "name": "Dobrzyńskie", "lat": 52.85, "lon": 19.25}, {"category": "pojezierza", "name": "Chełmińskie", "lat": 53.25, "lon": 18.6}, {"category": "pojezierza", "name": "Kujawskie", "lat": 52.8, "lon": 18.25}, {"category": "pojezierza", "name": "Gnieźnieńskie", "lat": 52.55, "lon": 17.55}, {"category": "pojezierza", "name": "Leszczyńskie", "lat": 51.95, "lon": 16.55}, {"category": "pojezierza", "name": "Poznańskie", "lat": 52.35, "lon": 16.85}, {"category": "pojezierza", "name": "Lubuskie", "lat": 52.35, "lon": 15.5}, {"category": "niziny", "name": "Śląsko-Łużycka", "lat": 51.3, "lon": 14.95}, {"category": "niziny", "name": "Śląska", "lat": 51.1, "lon": 17.0}, {"category": "niziny", "name": "Południowowielkopolska", "lat": 51.55, "lon": 17.7}, {"category": "niziny", "name": "Mazowiecka", "lat": 52.3, "lon": 20.0}, {"category": "niziny", "name": "Podlaska", "lat": 53.0, "lon": 23.0}, {"category": "wyżyny", "name": "Śląska", "lat": 50.3, "lon": 18.9}, {"category": "wyżyny", "name": "Krakowsko-Częstochowska", "lat": 50.6, "lon": 19.6}, {"category": "wyżyny", "name": "Kielecka", "lat": 50.9, "lon": 20.7}, {"category": "wyżyny", "name": "Niecka Nidziańska", "lat": 50.5, "lon": 20.55}, {"category": "wyżyny", "name": "Lubelska", "lat": 51.2, "lon": 22.55}, {"category": "wyżyny", "name": "Roztocze", "lat": 50.65, "lon": 23.1}, {"category": "wyżyny", "name": "Polesie", "lat": 51.4, "lon": 23.5}, {"category": "wyżyny", "name": "Kotlina Sandomierska", "lat": 50.0, "lon": 21.75}, {"category": "wyżyny", "name": "Kotlina Oświęcimska", "lat": 50.0, "lon": 19.25}, {"category": "góry", "name": "Świętokrzyskie", "lat": 50.9, "lon": 21.05}, {"category": "góry", "name": "Karkonosze", "lat": 50.75, "lon": 15.6}, {"category": "góry", "name": "Izerskie", "lat": 50.85, "lon": 15.35}, {"category": "góry", "name": "Kaczawskie", "lat": 50.95, "lon": 15.85}, {"category": "góry", "name": "Sowie", "lat": 50.65, "lon": 16.55}, {"category": "góry", "name": "Stołowe", "lat": 50.48, "lon": 16.35}, {"category": "góry", "name": "Bystrzyckie", "lat": 50.3, "lon": 16.55}, {"category": "góry", "name": "Złote", "lat": 50.3, "lon": 17.0}, {"category": "góry", "name": "Kotlina Kłodzka", "lat": 50.45, "lon": 16.65}, {"category": "góry", "name": "Bieszczady", "lat": 49.1, "lon": 22.7}, {"category": "góry", "name": "Beskid Niski", "lat": 49.45, "lon": 21.25}, {"category": "góry", "name": "Beskid Sądecki", "lat": 49.45, "lon": 20.75}, {"category": "góry", "name": "Beskid Wyspowy", "lat": 49.7, "lon": 20.2}, {"category": "góry", "name": "Pieniny", "lat": 49.42, "lon": 20.42}, {"category": "góry", "name": "Gorce", "lat": 49.55, "lon": 20.1}, {"category": "góry", "name": "Tatry", "lat": 49.25, "lon": 19.95}, {"category": "góry", "name": "Beskid Żywiecki", "lat": 49.55, "lon": 19.3}, {"category": "góry", "name": "Beskid Makowski", "lat": 49.75, "lon": 19.8}, {"category": "góry", "name": "Beskid Mały", "lat": 49.8, "lon": 19.2}, {"category": "góry", "name": "Beskid Śląski", "lat": 49.65, "lon": 18.95}];
+const SEM1 = new Set(['pobrzeża','pojezierza','niziny','wyżyny','góry']);
+const SEM2 = new Set(['kanały','rzeki','jeziora']);
+const CAT_LABEL = {"kanały":"Kanał","rzeki":"Rzeka","jeziora":"Jezioro","pobrzeża":"Pobrzeże","pojezierza":"Pojezierze","niziny":"Nizina","wyżyny":"Wyżyna / kotlina","góry":"Góry"};
+const map = L.map('map', {minZoom:5,maxZoom:10}).setView([52.05,19.25],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap contributors'
+}).addTo(map);
+
+let pool=[], current=null, questionNo=1, score=0, answered=0, locked=false, answerMarker=null;
+const TOTAL=20;
+
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+function setPool(){
+  const c=document.getElementById('category').value;
+  pool=shuffle(c==='all'?DATA:c==='sem1'?DATA.filter(x=>SEM1.has(x.category)):c==='sem2'?DATA.filter(x=>SEM2.has(x.category)):DATA.filter(x=>x.category===c));
+  questionNo=1;score=0;answered=0;locked=false;
+  document.getElementById('q').textContent=`1 / ${Math.min(TOTAL,pool.length)}`;
+  document.getElementById('score').textContent=0;
+  document.getElementById('acc').textContent='0%';
+  newQuestion();
+}
+function newQuestion(){
+  if(answered>=TOTAL || pool.length===0){
+    document.getElementById('target').textContent='Koniec serii 🎉';
+    document.getElementById('feedback').className='good';
+    document.getElementById('feedback').textContent=`Wynik: ${score} / ${answered}. Kliknij „Nowa seria”, żeby zagrać ponownie.`;
+    locked=true; return;
+  }
+  current=pool[questionNo-1];
+  if(!current) current=pool[Math.floor(Math.random()*pool.length)];
+  document.getElementById('target').textContent=current.name;
+  document.getElementById('feedback').className='';
+  document.getElementById('feedback').textContent='Kliknij mapę, żeby odpowiedzieć.';
+  document.getElementById('q').textContent=`${questionNo} / ${Math.min(TOTAL,pool.length)}`;
+  locked=false;
+  if(answerMarker){map.removeLayer(answerMarker);answerMarker=null}
+}
+function haversine(a,b){
+ const R=6371, p=Math.PI/180;
+ const dlat=(b.lat-a.lat)*p, dlon=(b.lon-a.lon)*p;
+ const x=Math.sin(dlat/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(dlon/2)**2;
+ return 2*R*Math.asin(Math.sqrt(x));
+}
+map.on('click', e=>{
+ if(locked||!current)return;
+ const d=haversine({lat:e.latlng.lat,lon:e.latlng.lng},{lat:current.lat,lon:current.lon});
+ // Lokalizacje są punktami orientacyjnymi — kliknięcie w rozsądnej okolicy powinno być zaliczone.
+ // Krainy geograficzne mają większy margines, bo ich granice zajmują duży obszar.
+ const tol = SEM1.has(current.category) ? 120 : (current.category==='jeziora' ? 45 : 70);
+ answered++;
+ let ok=d<=tol;
+ if(ok){score++;document.getElementById('feedback').className='good';document.getElementById('feedback').innerHTML=`✅ Dobrze! Trafiłeś/aś w okolice <b>${current.name}</b> — około <b>${Math.round(d)} km</b> od punktu orientacyjnego.`}
+ else {document.getElementById('feedback').className='bad';document.getElementById('feedback').innerHTML=`❌ Za daleko. Byłeś/aś około <b>${Math.round(d)} km</b> od właściwego punktu orientacyjnego.`}
+ document.getElementById('score').textContent=score;
+ document.getElementById('acc').textContent=Math.round(score/answered*100)+'%';
+ answerMarker=L.marker([current.lat,current.lon]).addTo(map).bindPopup(`<b>${current.name}</b><br>${CAT_LABEL[current.category]}`).openPopup();
+ locked=true;
+});
+document.getElementById('next').onclick=()=>{if(locked){questionNo++;newQuestion()}};
+document.getElementById('restart').onclick=setPool;
+document.getElementById('show').onclick=()=>{
+ if(!current||locked)return;
+ locked=true;
+ answerMarker=L.marker([current.lat,current.lon]).addTo(map).bindPopup(`<b>${current.name}</b><br>${CAT_LABEL[current.category]}`).openPopup();
+ document.getElementById('feedback').className='';
+ document.getElementById('feedback').innerHTML=`📍 Odpowiedź pokazana. Zapamiętaj położenie i kliknij „Następne”.`;
+};
+document.getElementById('category').onchange=setPool;
+setPool();
+</script>
+</body></html>
