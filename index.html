@@ -17,7 +17,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 main{max-width:1250px;margin:auto;padding:16px}.layout{display:grid;grid-template-columns:1fr 300px;gap:16px}
 #map{height:650px;border-radius:14px;overflow:hidden;border:1px solid #d8dee9;background:#dbeafe}
 .panel{background:var(--card);border-radius:14px;padding:18px;box-shadow:0 2px 12px #0000000d;height:max-content}
-.target{font-size:25px;font-weight:750;margin:6px 0 16px}.hint{font-size:13px;color:var(--muted);line-height:1.45}
+.cat-tag{font-size:.7em;font-weight:700;opacity:.75;text-transform:uppercase;letter-spacing:.04em}
+    .target{font-size:25px;font-weight:750;margin:6px 0 16px}.hint{font-size:13px;color:var(--muted);line-height:1.45}
 .stat{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #edf0f5}.stat:last-child{border:0}
 #feedback{min-height:50px;margin-top:14px;padding:11px;border-radius:10px;background:#f3f4f6;line-height:1.4}
 .good{background:#e9f8ef!important;color:var(--good)}.bad{background:#fff0f0!important;color:var(--bad)}
@@ -99,7 +100,7 @@ function newQuestion(){
   }
   current=pool[questionNo-1];
   if(!current) current=pool[Math.floor(Math.random()*pool.length)];
-  document.getElementById('target').textContent=current.name;
+  document.getElementById('target').innerHTML=`<span class="cat-tag">${CAT_LABEL[current.category]}</span><br>${current.name}`;
   document.getElementById('feedback').className='';
   document.getElementById('feedback').textContent='Kliknij mapę, żeby odpowiedzieć.';
   document.getElementById('q').textContent=`${questionNo} / ${Math.min(TOTAL,pool.length)}`;
