@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mapa Polski — quiz geograficzny</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<!-- STATYSTYKI: po założeniu darmowego konta GoatCounter zamień GOATCOUNTER_CODE na swój kod. -->
+<script>window.GOATCOUNTER_CODE='GOATCOUNTER_CODE';</script>
+<script>if(window.GOATCOUNTER_CODE!=='GOATCOUNTER_CODE'){document.write('<script data-goatcounter="https://'+window.GOATCOUNTER_CODE+'.goatcounter.com/count" async src="https://gc.zgo.at/count.js"><\/script>')}</script>
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#68738a;--accent:#2563eb;--good:#16803c;--bad:#c62828}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -81,6 +84,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 let pool=[], current=null, questionNo=1, score=0, answered=0, locked=false, answerMarker=null, learningMarkers=[];
 const TOTAL=20;
 let mode="quiz";
+function trackEvent(name, extra={}){
+  if(window.GOATCOUNTER_CODE==='GOATCOUNTER_CODE' || !window.goatcounter?.count) return;
+  const suffix=Object.entries(extra).map(([k,v])=>`${k}-${String(v).replace(/\s+/g,'-')}`).join('_');
+  window.goatcounter.count({path:suffix?`${name}_${suffix}`:name,title:name,event:true});
+}
 function clearLearningMarkers(){learningMarkers.forEach(m=>map.removeLayer(m));learningMarkers=[];}
 function showLearningMarkers(){
   clearLearningMarkers();
@@ -96,6 +104,7 @@ function showLearningMarkers(){
 }
 function setMode(next){
   mode=next;
+  trackEvent(next==='learn'?'learn_mode':'quiz_mode');
   document.body.classList.toggle("learning",mode==="learn");
   document.getElementById("quizMode").classList.toggle("active",mode==="quiz");
   document.getElementById("learnMode").classList.toggle("active",mode==="learn");
@@ -109,6 +118,7 @@ function setMode(next){
 function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
 function setPool(){
   const c=document.getElementById('category').value;
+  trackEvent('quiz_start',{category:c});
   pool=shuffle(c==='all'?DATA:c==='sem1'?DATA.filter(x=>SEM1.has(x.category)):c==='sem2'?DATA.filter(x=>SEM2.has(x.category)):DATA.filter(x=>x.category===c));
   questionNo=1;score=0;answered=0;locked=false;
   document.getElementById('q').textContent=`1 / ${Math.min(TOTAL,pool.length)}`;
@@ -118,6 +128,7 @@ function setPool(){
 }
 function newQuestion(){
   if(answered>=TOTAL || pool.length===0){
+    if(answered>=TOTAL) trackEvent('quiz_complete',{score:score,total:answered});
     document.getElementById('target').textContent='Koniec serii 🎉';
     document.getElementById('feedback').className='good';
     document.getElementById('feedback').textContent=`Wynik: ${score} / ${answered}. Kliknij „Nowa seria”, żeby zagrać ponownie.`;
@@ -147,8 +158,8 @@ map.on('click', e=>{
  const tol = SEM1.has(current.category) ? 120 : (current.category==='jeziora' ? 45 : 70);
  answered++;
  let ok=d<=tol;
- if(ok){score++;document.getElementById('feedback').className='good';document.getElementById('feedback').innerHTML=`✅ Dobrze! Trafiłeś/aś w okolice <b>${current.name}</b> — około <b>${Math.round(d)} km</b> od punktu orientacyjnego.`}
- else {document.getElementById('feedback').className='bad';document.getElementById('feedback').innerHTML=`❌ Za daleko. Byłeś/aś około <b>${Math.round(d)} km</b> od właściwego punktu orientacyjnego.`}
+ if(ok){score++;trackEvent('quiz_answer',{category:current.category,result:'correct'});document.getElementById('feedback').className='good';document.getElementById('feedback').innerHTML=`✅ Dobrze! Trafiłeś/aś w okolice <b>${current.name}</b> — około <b>${Math.round(d)} km</b> od punktu orientacyjnego.`}
+ else {trackEvent('quiz_answer',{category:current.category,result:'wrong'});document.getElementById('feedback').className='bad';document.getElementById('feedback').innerHTML=`❌ Za daleko. Byłeś/aś około <b>${Math.round(d)} km</b> od właściwego punktu orientacyjnego.`}
  document.getElementById('score').textContent=score;
  document.getElementById('acc').textContent=Math.round(score/answered*100)+'%';
  answerMarker=L.marker([current.lat,current.lon]).addTo(map).bindPopup(`<b>${current.name}</b><br>${CAT_LABEL[current.category]}`).openPopup();
