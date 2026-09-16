@@ -6,11 +6,12 @@
 <title>Mapa Polski — quiz geograficzny</title>
 <script data-goatcounter="https://chudyxd.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<!-- STATYSTYKI: po założeniu darmowego konta GoatCounter zamień GOATCOUNTER_CODE na swój kod. -->
-<script>window.GOATCOUNTER_CODE='<script data-goatcounter="https://chudyxd.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>';</script>
-<script>if(window.GOATCOUNTER_CODE!=='<script data-goatcounter="https://chudyxd.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>'){document.write('<script data-goatcounter="https://'+window.GOATCOUNTER_CODE+'.goatcounter.com/count" async src="https://gc.zgo.at/count.js"><\/script>')}</script>
+<script data-goatcounter="https://chudyxd.goatcounter.com/count"
+        async
+        src="https://gc.zgo.at/count.js"></script>
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#68738a;--accent:#2563eb;--good:#16803c;--bad:#c62828}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -87,10 +88,20 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 let pool=[], current=null, questionNo=1, score=0, answered=0, locked=false, answerMarker=null, learningMarkers=[];
 const TOTAL=20;
 let mode="quiz";
-function trackEvent(name, extra={}){
-  if(window.GOATCOUNTER_CODE==='GOATCOUNTER_CODE' || !window.goatcounter?.count) return;
-  const suffix=Object.entries(extra).map(([k,v])=>`${k}-${String(v).replace(/\s+/g,'-')}`).join('_');
-  window.goatcounter.count({path:suffix?`${name}_${suffix}`:name,title:name,event:true});
+function trackEvent(name, extra = {}) {
+  if (!window.goatcounter?.count) return;
+
+  const suffix = Object.entries(extra)
+    .map(([key, value]) => {
+      return `${key}-${String(value).replace(/\s+/g, '-')}`;
+    })
+    .join('_');
+
+  window.goatcounter.count({
+    path: suffix ? `${name}_${suffix}` : name,
+    title: name,
+    event: true
+  });
 }
 function clearLearningMarkers(){learningMarkers.forEach(m=>map.removeLayer(m));learningMarkers=[];}
 function showLearningMarkers(){
